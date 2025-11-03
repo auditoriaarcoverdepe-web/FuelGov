@@ -94,9 +94,9 @@ const ConsumptionAnalytics: React.FC<ConsumptionAnalyticsProps> = ({ refuelings,
 
     const StatusBadge: React.FC<{ status: 'good' | 'average' | 'bad'; text: string; }> = ({ status, text }) => {
         const colorClasses = {
-            good: 'bg-success/20 text-success-dark',
+            good: 'bg-success/20 text-success',
             average: 'bg-gray-200 text-gray-700',
-            bad: 'bg-danger/20 text-danger-dark',
+            bad: 'bg-danger/20 text-danger',
         };
         return <span className={`px-2 py-1 text-xs font-semibold rounded-full ${colorClasses[status]}`}>{text}</span>;
     };

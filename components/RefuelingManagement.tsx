@@ -54,42 +54,11 @@ const RefuelingForm: React.FC<{
         [formData.vehicleId, availableResources.availableVehicles]
     );
 
-    useEffect(() => {
-        const selectedContract = availableResources.availableContracts.find(c => c.id === formData.contractId);
-        
-        if (selectedContract && selectedVehicle && formData.quantityLiters > 0) {
-            const mainItemsWithDate = selectedContract.items.map(item => ({ ...item, date: selectedContract.startDate }));
-            const additiveItemsWithDate = (selectedContract.additives || []).flatMap(additive => 
-                additive.items.map(item => ({ ...item, date: additive.date }))
-            );
-            const allItems = [...mainItemsWithDate, ...additiveItemsWithDate];
-
-            const fuelToPrice = selectedVehicle.fuelType === FuelType.FLEX ? formData.fuelType : selectedVehicle.fuelType;
-
-            if (!fuelToPrice) {
-                setFormData(prev => ({ ...prev, totalValue: 0 }));
-                return;
-            }
-
-            const latestItem = allItems
-                .filter(item => item.fuelType === fuelToPrice)
-                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-
-            if (latestItem) {
-                const calculatedValue = formData.quantityLiters * latestItem.unitPrice;
-                setFormData(prev => ({ ...prev, totalValue: parseFloat(calculatedValue.toFixed(2)) }));
-            } else {
-                 setFormData(prev => ({...prev, totalValue: 0}));
-            }
-
-        } else {
-            setFormData(prev => ({...prev, totalValue: 0}));
-        }
-    }, [formData.quantityLiters, formData.contractId, formData.vehicleId, formData.fuelType, availableResources, selectedVehicle]);
-
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        const newFormData = { ...formData, [name]: (name === 'quantityLiters' || name === 'totalValue' || name === 'previousOdometer' || name === 'currentOdometer') ? parseFloat(value) : value };
+        const numericFields = ['quantityLiters', 'totalValue', 'previousOdometer', 'currentOdometer'];
+        const processedValue = numericFields.includes(name) ? (parseFloat(value) || 0) : value;
+        const newFormData = { ...formData, [name]: processedValue };
         
         if (name === 'vehicleId') {
             const newSelectedVehicle = availableResources.availableVehicles.find(v => v.id === value);
@@ -166,7 +135,7 @@ const RefuelingForm: React.FC<{
                 </div>
                 <div>
                     <label className="block text-sm font-medium">Valor Total (R$)</label>
-                    <input type="number" step="0.01" name="totalValue" value={formData.totalValue} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100" readOnly />
+                    <input type="number" step="0.01" name="totalValue" value={formData.totalValue} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
             </div>
             <div className="flex justify-end space-x-2 pt-4">

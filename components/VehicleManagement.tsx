@@ -1,4 +1,5 @@
 
+
 import React, { useState, useMemo } from 'react';
 import { useMockData } from '../hooks/useMockData';
 import Card from './ui/Card';
@@ -33,7 +34,7 @@ const VehicleForm: React.FC<{
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: name === 'year' ? parseInt(value) : value }));
+        setFormData(prev => ({ ...prev, [name]: name === 'year' ? (parseInt(value) || new Date().getFullYear()) : value }));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
