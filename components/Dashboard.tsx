@@ -1,5 +1,6 @@
+
 import React, { useMemo } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import type { Contract, Refueling } from '../types';
@@ -40,7 +41,7 @@ interface DashboardProps {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
-    const { contracts, refuelings, departments, entities, drivers } = useMockData();
+    const { contracts, refuelings, departments, entities, drivers, loading } = useSupabaseData();
     const { currentUser } = useAuth();
 
     const filteredData = useMemo(() => {
@@ -115,7 +116,7 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
                 alerts.push({ id: `c-days-${contract.id}`, title: contract.supplier, message: `Contrato expira em ${daysRemaining} dia(s).`, type: 'warning' });
             }
 
-            const contractTotalLiters = contract.items.reduce((sum, item) => sum + item.quantityLiters, 0);
+            const contractTotalLiters = (contract.items || []).reduce((sum, item) => sum + item.quantityLiters, 0);
             const usedLiters = filteredData.refuelings
                 .filter(r => r.contractId === contract.id)
                 .reduce((sum, r) => sum + r.quantityLiters, 0);
@@ -150,6 +151,10 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
     const entityName = entities.find(e => e.id === entityId)?.name || 'Nenhuma entidade selecionada';
     const departmentName = departments.find(d => d.id === currentUser?.departmentId)?.name;
     
+    if (loading) {
+        return <Card><p>Carregando dados do dashboard...</p></Card>;
+    }
+
     if (!entityId || !currentUser) {
         return <Card><p>Por favor, selecione uma entidade para visualizar o dashboard.</p></Card>;
     }

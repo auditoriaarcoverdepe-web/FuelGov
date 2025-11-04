@@ -1,6 +1,7 @@
 
+
 import React, { useState, useMemo } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +14,7 @@ const DriverForm: React.FC<{
   onSave: (driver: Omit<Driver, 'id'> | Driver) => void;
   onClose: () => void;
 }> = ({ driver, onSave, onClose }) => {
-    const { departments } = useMockData();
+    const { departments } = useSupabaseData();
     const { currentUser } = useAuth();
     
     const availableDepartments = useMemo(() => {
@@ -71,7 +72,7 @@ const DriverForm: React.FC<{
 };
 
 const DriverManagement: React.FC = () => {
-    const { drivers, departments, addDriver, updateDriver, deleteDriver } = useMockData();
+    const { drivers, departments, addDriver, updateDriver, deleteDriver } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDriver, setEditingDriver] = useState<Driver | null>(null);

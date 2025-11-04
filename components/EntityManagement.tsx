@@ -1,5 +1,6 @@
+
 import React, { useState, useMemo } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +15,7 @@ const EntityForm: React.FC<{
     const [formData, setFormData] = useState({
         name: entity?.name || '',
         type: entity?.type || 'Prefeitura',
+        cnpj: entity?.cnpj || '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -26,6 +28,10 @@ const EntityForm: React.FC<{
             <div>
                 <label className="block text-sm font-medium text-gray-700">Nome da Entidade</label>
                 <input type="text" name="name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+            </div>
+             <div>
+                <label className="block text-sm font-medium text-gray-700">CNPJ</label>
+                <input type="text" name="cnpj" value={formData.cnpj} onChange={e => setFormData({...formData, cnpj: e.target.value})} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
             </div>
             <div>
                 <label className="block text-sm font-medium text-gray-700">Tipo</label>
@@ -74,7 +80,7 @@ interface EntityManagementProps {
 }
 
 const EntityManagement: React.FC<EntityManagementProps> = ({ entityId }) => {
-    const { entities, departments, addEntity, updateEntity, deleteEntity, addDepartment, updateDepartment, deleteDepartment } = useMockData();
+    const { entities, departments, addEntity, updateEntity, deleteEntity, addDepartment, updateDepartment, deleteDepartment } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
     const [editingEntity, setEditingEntity] = useState<PublicEntity | null>(null);

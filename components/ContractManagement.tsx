@@ -1,12 +1,14 @@
 
 
+
+
 import React, { useState, useMemo } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
 import { Role, FuelType } from '../types';
-import type { Contract, ContractItem, Refueling, Vehicle, ContractAdditive } from '../types';
+import type { Contract, ContractItem, ContractAdditive } from '../types';
 import ExportButtons from './ui/ExportButtons';
 
 const AdditiveForm: React.FC<{
@@ -102,10 +104,11 @@ const ContractForm: React.FC<{
   onSave: (contract: Omit<Contract, 'id'> | Contract) => void;
   onClose: () => void;
 }> = ({ contract, onSave, onClose }) => {
-    const { departments } = useMockData();
+    const { departments } = useSupabaseData();
     const { currentUser } = useAuth();
     
     const availableDepartments = useMemo(() => {
+        if (!currentUser) return [];
         if (currentUser.role === Role.ADMIN) return departments;
         if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entityId === currentUser.entityId);
         if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.departmentId);
@@ -158,7 +161,7 @@ const ContractForm: React.FC<{
     };
 
     const handleSaveAdditive = (additive: ContractAdditive) => {
-        const newAdditives = [...formData.additives];
+        const newAdditives = [...(formData.additives || [])];
         if (editingAdditive !== null) {
             newAdditives[editingAdditive.index] = additive;
         } else {
@@ -175,7 +178,7 @@ const ContractForm: React.FC<{
     };
 
     const handleRemoveAdditive = (index: number) => {
-        setFormData(prev => ({ ...prev, additives: prev.additives.filter((_, i) => i !== index) }));
+        setFormData(prev => ({ ...prev, additives: (prev.additives || []).filter((_, i) => i !== index) }));
     };
 
     const handleAddNewAdditive = () => {
@@ -238,7 +241,7 @@ const ContractForm: React.FC<{
 
                 <h3 className="text-lg font-medium border-t pt-4 mt-4">Aditivos do Contrato</h3>
                 <div className="space-y-2">
-                    {formData.additives.map((additive, index) => (
+                    {formData.additives && formData.additives.map((additive, index) => (
                          <div key={additive.id} className="flex justify-between items-center p-2 border rounded-md bg-gray-50">
                             <div>
                                 <p className="font-semibold text-sm">{additive.description}</p>
@@ -270,139 +273,8 @@ const ContractForm: React.FC<{
     );
 };
 
-const ProgressBar: React.FC<{
-    value: number;
-    max: number;
-    label: string;
-    format: 'currency' | 'liters';
-}> = ({ value, max, label, format }) => {
-    const percentage = max > 0 ? (value / max) * 100 : 0;
-    const formattedValue = format === 'currency' ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : `${value.toLocaleString('pt-BR')} L`;
-    const formattedMax = format === 'currency' ? max.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : `${max.toLocaleString('pt-BR')} L`;
-
-    return (
-        <div className="my-2">
-            <div className="flex justify-between items-center mb-1 text-sm">
-                <span className="font-medium text-text-secondary">{label}</span>
-                <span className="text-text-primary font-mono">{percentage.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div className="bg-secondary h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
-            </div>
-            <div className="text-xs text-right text-text-secondary mt-1 font-mono">
-                {formattedValue} / {formattedMax}
-            </div>
-        </div>
-    );
-}
-
-const ContractInfoCard: React.FC<{
-    contract: Contract;
-    refuelings: Refueling[];
-    vehicles: Vehicle[];
-    canEdit: boolean;
-    onEdit: () => void;
-    onDelete: () => void;
-}> = ({ contract, refuelings, vehicles, canEdit, onEdit, onDelete }) => {
-    const { departments } = useMockData();
-
-    const contractBalances = useMemo(() => {
-        const allItems = [...contract.items, ...(contract.additives?.flatMap(a => a.items) || [])];
-        const totalContractValue = allItems.reduce((sum, item) => sum + (item.quantityLiters * item.unitPrice), 0);
-        
-        const refuelingsForContract = refuelings.filter(r => r.contractId === contract.id);
-        const totalSpentValue = refuelingsForContract.reduce((sum, r) => sum + r.totalValue, 0);
-
-        const vehiclesById = new Map<string, Vehicle>(vehicles.map(v => [v.id, v]));
-        
-        const aggregatedItems = allItems.reduce((acc, item) => {
-            if (!acc[item.fuelType]) {
-                acc[item.fuelType] = { fuelType: item.fuelType, quantityLiters: 0 };
-            }
-            acc[item.fuelType].quantityLiters += item.quantityLiters;
-            return acc;
-        }, {} as Record<FuelType, { fuelType: FuelType; quantityLiters: number }>);
-        
-
-        const itemsWithUsage = Object.values(aggregatedItems).map((aggItem: { fuelType: FuelType; quantityLiters: number }) => {
-            const usedLiters = refuelingsForContract
-                .filter(r => {
-                    const fuelUsed = r.fuelType || vehiclesById.get(r.vehicleId)?.fuelType;
-                    return fuelUsed === aggItem.fuelType;
-                })
-                .reduce((sum, r) => sum + r.quantityLiters, 0);
-            return { ...aggItem, usedLiters };
-        });
-
-        const latestEndDate = contract.additives?.reduce((latest, ad) => ad.newEndDate && new Date(ad.newEndDate) > new Date(latest) ? ad.newEndDate : latest, contract.endDate) || contract.endDate;
-
-        return { totalContractValue, totalSpentValue, itemsWithUsage, latestEndDate };
-
-    }, [contract, refuelings, vehicles]);
-
-    return (
-        <Card className="flex flex-col">
-            <div className="flex-grow">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h3 className="text-lg font-bold text-primary">{contract.supplier}</h3>
-                        <p className="text-sm text-text-secondary">{departments.find(d => d.id === contract.departmentId)?.name}</p>
-                        <p className="text-xs text-text-secondary font-mono mt-1">
-                            {new Date(contract.startDate).toLocaleDateString()} - {new Date(contractBalances.latestEndDate).toLocaleDateString()}
-                        </p>
-                    </div>
-                    {canEdit && (
-                        <div className="flex-shrink-0 flex items-center space-x-3">
-                             <button onClick={onEdit} className="text-indigo-600 hover:text-indigo-900" title="Editar Contrato">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
-                                </svg>
-                             </button>
-                             <button onClick={onDelete} className="text-danger hover:text-red-800" title="Excluir Contrato">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                             </button>
-                        </div>
-                    )}
-                </div>
-                <div className="mt-4 border-t pt-2">
-                    <h4 className="font-semibold text-text-primary mb-2">Saldos Consolidados do Contrato</h4>
-                    {contractBalances.itemsWithUsage.map(item => (
-                        <ProgressBar
-                            key={item.fuelType}
-                            label={item.fuelType}
-                            value={item.usedLiters}
-                            max={item.quantityLiters}
-                            format="liters"
-                        />
-                    ))}
-                     <div className="border-t mt-3 pt-3">
-                        <ProgressBar
-                            label="Valor Total Consumido"
-                            value={contractBalances.totalSpentValue}
-                            max={contractBalances.totalContractValue}
-                            format="currency"
-                        />
-                    </div>
-                </div>
-                {contract.additives && contract.additives.length > 0 && (
-                    <div className="mt-4 border-t pt-2">
-                        <h4 className="font-semibold text-text-primary mb-2">Aditivos</h4>
-                        <ul className="list-disc list-inside text-sm text-text-secondary space-y-1">
-                            {contract.additives.map(ad => (
-                                <li key={ad.id}>{ad.description} ({new Date(ad.date).toLocaleDateString()})</li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
-        </Card>
-    )
-}
-
 const ContractManagement: React.FC = () => {
-    const { contracts, departments, addContract, updateContract, deleteContract, refuelings, vehicles } = useMockData();
+    const { contracts, departments, addContract, updateContract, deleteContract } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
@@ -410,6 +282,7 @@ const ContractManagement: React.FC = () => {
     const canEdit = currentUser.role === Role.ADMIN || currentUser.role === Role.USER;
 
     const filteredContracts = useMemo(() => {
+        if (!currentUser) return [];
         if (currentUser.role === Role.ADMIN) return contracts;
         const userEntityDepartments = departments.filter(d => d.entityId === currentUser.entityId).map(d => d.id);
         if (currentUser.role === Role.CONTROLLER) return contracts.filter(c => userEntityDepartments.includes(c.departmentId));
@@ -418,8 +291,11 @@ const ContractManagement: React.FC = () => {
     }, [currentUser, contracts, departments]);
 
     const handleSave = (contract: Omit<Contract, 'id'> | Contract) => {
-        if ('id' in contract) updateContract(contract);
-        else addContract(contract);
+        if ('id' in contract) {
+            updateContract(contract);
+        } else {
+            addContract(contract);
+        }
         setIsModalOpen(false);
         setEditingContract(null);
     };
@@ -428,48 +304,85 @@ const ContractManagement: React.FC = () => {
         setEditingContract(contract);
         setIsModalOpen(true);
     };
-    
+
     const handleAddNew = () => {
         setEditingContract(null);
         setIsModalOpen(true);
     };
 
+    const getStatus = (endDate: string) => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const end = new Date(endDate);
+        const daysRemaining = Math.ceil((end.getTime() - today.getTime()) / (1000 * 3600 * 24));
+        if (daysRemaining < 0) return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-danger/20 text-danger">Expirado</span>;
+        if (daysRemaining <= 30) return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-warning/20 text-warning">Expira em {daysRemaining}d</span>;
+        return <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-success/20 text-success">Ativo</span>;
+    };
+
     const exportColumns = [
         { header: 'Fornecedor', accessor: 'supplier' as const },
-        { header: 'Data Início', accessor: (c: Contract) => new Date(c.startDate).toLocaleDateString() },
-        { header: 'Data Fim', accessor: (c: Contract) => new Date(c.endDate).toLocaleDateString() },
+        { header: 'Início', accessor: (c: Contract) => new Date(c.startDate).toLocaleDateString() },
+        { header: 'Fim', accessor: (c: Contract) => new Date(c.endDate).toLocaleDateString() },
         { header: 'Órgão', accessor: (c: Contract) => departments.find(d => d.id === c.departmentId)?.name || 'N/A' },
-        { header: 'Itens', accessor: (c: Contract) => c.items.map(item => `${item.quantityLiters}L de ${item.fuelType} @ R$${item.unitPrice}`).join('; ') },
     ];
 
     return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center flex-wrap gap-4">
+        <Card>
+            <div className="flex justify-between items-center mb-4 flex-wrap gap-4">
                 <h1 className="text-2xl font-bold">Gestão de Contratos</h1>
                 <div className="flex items-center space-x-2">
                     <ExportButtons data={filteredContracts} columns={exportColumns} filenamePrefix="Contratos" />
                     {canEdit && <button onClick={handleAddNew} className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">Adicionar Contrato</button>}
                 </div>
             </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {filteredContracts.map(c => (
-                    <ContractInfoCard 
-                        key={c.id}
-                        contract={c}
-                        refuelings={refuelings}
-                        vehicles={vehicles}
-                        canEdit={canEdit}
-                        onEdit={() => handleEdit(c)}
-                        onDelete={() => deleteContract(c.id)}
-                    />
-                ))}
+            <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fornecedor</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vigência</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Órgão</th>
+                            {canEdit && <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>}
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {filteredContracts.map(c => (
+                            <tr key={c.id}>
+                                <td className="px-6 py-4 whitespace-nowrap">{c.supplier}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{new Date(c.startDate).toLocaleDateString()} - {new Date(c.endDate).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{getStatus(c.endDate)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(d => d.id === c.departmentId)?.name || 'N/A'}</td>
+                                {canEdit && (
+                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                        <div className="flex items-center justify-end space-x-3">
+                                            <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-900" title="Editar Contrato">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
+                                                </svg>
+                                            </button>
+                                            <button onClick={() => deleteContract(c.id)} className="text-danger hover:text-red-800" title="Excluir Contrato">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    </td>
+                                )}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-
-             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingContract ? "Editar Contrato" : "Adicionar Contrato"}>
-                <ContractForm contract={editingContract} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
+            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingContract ? "Editar Contrato" : "Adicionar Contrato"}>
+                <ContractForm
+                    contract={editingContract}
+                    onSave={handleSave}
+                    onClose={() => setIsModalOpen(false)}
+                />
             </Modal>
-        </div>
+        </Card>
     );
 };
 

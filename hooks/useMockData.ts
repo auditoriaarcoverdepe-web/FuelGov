@@ -23,7 +23,7 @@ const mockDepartments: Department[] = [
     { id: 'd4', name: 'Gabinete do Vereador', entityId: '2' },
 ];
 
-export const mockUsers: User[] = [
+const mockUsers: User[] = [
     { id: 'u1', name: 'Admin Geral', email: 'erinaldotelso.aud@gmail.com', role: Role.ADMIN },
     { id: 'u2', name: 'João Controlador', email: 'controlador.pm@cidadourada.gov', role: Role.CONTROLLER, entityId: '1' },
     { id: 'u3', name: 'Maria Gestora', email: 'gestora.saude@cidadourada.gov', role: Role.USER, entityId: '1', departmentId: 'd2' },

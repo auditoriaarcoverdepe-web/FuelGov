@@ -1,11 +1,12 @@
 
+
 import React, { useState } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
-import type { User } from '../types';
+import type { User, Department } from '../types';
 import ExportButtons from './ui/ExportButtons';
 
 const UserForm: React.FC<{
@@ -13,8 +14,8 @@ const UserForm: React.FC<{
   onSave: (user: Omit<User, 'id'> | User) => void;
   onClose: () => void;
   entityId: string;
-}> = ({ user, onSave, onClose, entityId }) => {
-    const { departments } = useMockData();
+  departments: Department[];
+}> = ({ user, onSave, onClose, entityId, departments }) => {
     const [formData, setFormData] = useState({
         name: user?.name || '',
         email: user?.email || '',
@@ -80,7 +81,7 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ entityId }) => {
-    const { users, entities, departments, addUser, updateUser, deleteUser } = useMockData();
+    const { users, entities, departments, addUser, updateUser, deleteUser } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -164,7 +165,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ entityId }) => {
                 </table>
             </div>
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingUser ? "Editar Usuário" : "Adicionar Usuário"}>
-                <UserForm user={editingUser} onSave={handleSave} onClose={() => setIsModalOpen(false)} entityId={entityId} />
+                <UserForm 
+                  user={editingUser} 
+                  onSave={handleSave} 
+                  onClose={() => setIsModalOpen(false)} 
+                  entityId={entityId}
+                  departments={departments}
+                />
             </Modal>
         </Card>
     );

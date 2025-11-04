@@ -9,20 +9,18 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
-    // Simulate async operation for better UX
-    setTimeout(() => {
-        const success = login(email, password);
-        if (!success) {
-          setError('E-mail ou senha inválidos.');
-        }
-        // On successful login, the App component will re-render and show the main app.
-        setLoading(false);
-    }, 500);
+    // Normaliza o e-mail para evitar problemas com espaços ou letras maiúsculas/minúsculas.
+    const success = await login(email.trim().toLowerCase(), password);
+    if (!success) {
+      setError('E-mail ou senha inválidos.');
+    }
+    // On successful login, the App component will re-render and show the main app.
+    setLoading(false);
   };
 
   return (

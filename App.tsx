@@ -1,5 +1,6 @@
 
-import React, { useState, useMemo } from 'react';
+
+import React, { useState, useMemo, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
@@ -14,7 +15,7 @@ import Login from './components/Login';
 import AdminHome from './components/AdminHome';
 import { Role } from './types';
 import type { User } from './types';
-import { useMockData } from './hooks/useMockData';
+import { supabase } from './lib/supabaseClient'; 
 
 export type View = 'dashboard' | 'entities' | 'vehicles' | 'drivers' | 'contracts' | 'refuelings' | 'users';
 
@@ -22,26 +23,96 @@ const App: React.FC = () => {
     const [view, setView] = useState<View>('dashboard');
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
-    const { users } = useMockData();
+    const [loadingSession, setLoadingSession] = useState(true);
 
-    const login = (email: string, password: string): boolean => {
-      // A verificação de senha é ignorada para restaurar o acesso.
-      // Qualquer senha funcionará desde que o e-mail esteja correto.
-      const user = users.find(u => u.email === email);
-      if (user) {
-        setCurrentUser(user);
-        if (user.role !== Role.ADMIN) {
-            setSelectedEntityId(user.entityId || null);
-        } else {
-            setSelectedEntityId(null);
-        }
-        setView('dashboard');
-        return true;
+    useEffect(() => {
+        const getSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+                const { data: userProfile, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+
+                if (error) {
+                    console.error("Error fetching user profile:", error);
+                } else if (userProfile) {
+                    setCurrentUser(userProfile as User);
+                    if ((userProfile as User).role !== Role.ADMIN) {
+                        setSelectedEntityId((userProfile as User).entityId || null);
+                    }
+                }
+            }
+            setLoadingSession(false);
+        };
+        getSession();
+        
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (_event, session) => {
+            if (session?.user) {
+                const { data: userProfile } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                setCurrentUser(userProfile as User | null);
+            } else {
+                setCurrentUser(null);
+            }
+          }
+        );
+
+        return () => {
+          authListener?.subscription.unsubscribe();
+        };
+
+    }, []);
+
+    const login = async (email: string, password: string): Promise<boolean> => {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (signInError) {
+        console.error('Supabase sign in error:', signInError.message);
+        return false;
       }
+      
+      if (data.user) {
+        const { data: userProfile, error: profileError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching user profile after login:', profileError.message);
+          await supabase.auth.signOut();
+          return false;
+        }
+
+        if (userProfile) {
+          setCurrentUser(userProfile as User);
+          if ((userProfile as User).role !== Role.ADMIN) {
+              setSelectedEntityId((userProfile as User).entityId || null);
+          } else {
+              setSelectedEntityId(null);
+          }
+          setView('dashboard');
+          return true;
+        }
+      }
+      
       return false;
     };
 
-    const logout = () => {
+    const logout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error("Error logging out:", error.message);
+        }
         setCurrentUser(null);
         setSelectedEntityId(null);
         setView('dashboard');
@@ -80,6 +151,14 @@ const App: React.FC = () => {
                 return <Dashboard entityId={entityIdForView}/>;
         }
     };
+
+    if (loadingSession) {
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-background">
+                <div className="text-xl font-semibold text-text-secondary">Carregando...</div>
+            </div>
+        );
+    }
     
     return (
         <AuthProvider value={authContextValue}>

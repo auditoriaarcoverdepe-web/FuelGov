@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -14,7 +14,7 @@ const VehicleForm: React.FC<{
   onSave: (vehicle: Omit<Vehicle, 'id'> | Vehicle) => void;
   onClose: () => void;
 }> = ({ vehicle, onSave, onClose }) => {
-    const { departments } = useMockData();
+    const { departments } = useSupabaseData();
     const { currentUser } = useAuth();
 
     const availableDepartments = useMemo(() => {
@@ -80,7 +80,7 @@ const VehicleForm: React.FC<{
 
 
 const VehicleManagement: React.FC = () => {
-    const { vehicles, departments, addVehicle, updateVehicle, deleteVehicle } = useMockData();
+    const { vehicles, departments, addVehicle, updateVehicle, deleteVehicle } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);

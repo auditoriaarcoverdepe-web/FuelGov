@@ -1,7 +1,7 @@
 
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import React, { useState, useMemo } from 'react';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
 import Modal from './ui/Modal';
 import { useAuth } from '../context/AuthContext';
@@ -14,28 +14,10 @@ const RefuelingForm: React.FC<{
   refueling: Partial<Refueling> | null;
   onSave: (refueling: Omit<Refueling, 'id'> | Refueling) => void;
   onClose: () => void;
-}> = ({ refueling, onSave, onClose }) => {
-    const { vehicles, drivers, contracts } = useMockData();
-    const { currentUser } = useAuth();
-
-    const availableResources = useMemo(() => {
-        let availableVehicles: Vehicle[] = [];
-        let availableDrivers: Driver[] = [];
-        let availableContracts: Contract[] = [];
-
-        if (currentUser.role === Role.ADMIN) {
-             availableVehicles = vehicles;
-             availableDrivers = drivers;
-             availableContracts = contracts;
-        } else if (currentUser.role === Role.USER && currentUser.departmentId) {
-            const deptId = currentUser.departmentId;
-            availableVehicles = vehicles.filter(v => v.departmentId === deptId);
-            availableDrivers = drivers.filter(d => d.departmentId === deptId);
-            availableContracts = contracts.filter(c => c.departmentId === deptId);
-        }
-        return { availableVehicles, availableDrivers, availableContracts };
-    }, [vehicles, drivers, contracts, currentUser]);
-
+  vehicles: Vehicle[];
+  drivers: Driver[];
+  contracts: Contract[];
+}> = ({ refueling, onSave, onClose, vehicles, drivers, contracts }) => {
     const [formData, setFormData] = useState({
         vehicleId: refueling?.vehicleId || '',
         driverId: refueling?.driverId || '',
@@ -50,8 +32,8 @@ const RefuelingForm: React.FC<{
     });
     
     const selectedVehicle = useMemo(() => 
-        availableResources.availableVehicles.find(v => v.id === formData.vehicleId),
-        [formData.vehicleId, availableResources.availableVehicles]
+        vehicles.find(v => v.id === formData.vehicleId),
+        [formData.vehicleId, vehicles]
     );
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -61,7 +43,7 @@ const RefuelingForm: React.FC<{
         const newFormData = { ...formData, [name]: processedValue };
         
         if (name === 'vehicleId') {
-            const newSelectedVehicle = availableResources.availableVehicles.find(v => v.id === value);
+            const newSelectedVehicle = vehicles.find(v => v.id === value);
             if (newSelectedVehicle?.fuelType !== FuelType.FLEX) {
                 newFormData.fuelType = undefined;
             }
@@ -86,7 +68,7 @@ const RefuelingForm: React.FC<{
                     <label className="block text-sm font-medium">Veículo</label>
                     <select name="vehicleId" value={formData.vehicleId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         <option value="">Selecione...</option>
-                        {availableResources.availableVehicles.map(v => <option key={v.id} value={v.id}>{v.plate} - {v.model}</option>)}
+                        {vehicles.map(v => <option key={v.id} value={v.id}>{v.plate} - {v.model}</option>)}
                     </select>
                 </div>
                 {selectedVehicle?.fuelType === FuelType.FLEX && (
@@ -103,14 +85,14 @@ const RefuelingForm: React.FC<{
                     <label className="block text-sm font-medium">Motorista</label>
                     <select name="driverId" value={formData.driverId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         <option value="">Selecione...</option>
-                        {availableResources.availableDrivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                 </div>
                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium">Contrato</label>
                     <select name="contractId" value={formData.contractId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                         <option value="">Selecione...</option>
-                        {availableResources.availableContracts.map(c => <option key={c.id} value={c.id}>{c.supplier}</option>)}
+                        {contracts.map(c => <option key={c.id} value={c.id}>{c.supplier}</option>)}
                     </select>
                 </div>
                 <div>
@@ -148,7 +130,7 @@ const RefuelingForm: React.FC<{
 
 
 const RefuelingManagement: React.FC = () => {
-    const { refuelings, vehicles, drivers, contracts, departments, addRefueling, updateRefueling, deleteRefueling } = useMockData();
+    const { refuelings, vehicles, drivers, contracts, departments, addRefueling, updateRefueling, deleteRefueling } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingRefueling, setEditingRefueling] = useState<Refueling | null>(null);
@@ -391,7 +373,14 @@ const RefuelingManagement: React.FC = () => {
             </Card>
 
             <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingRefueling ? "Editar Abastecimento" : "Adicionar Abastecimento"}>
-                <RefuelingForm refueling={editingRefueling} onSave={handleSave} onClose={() => setIsModalOpen(false)} />
+                <RefuelingForm 
+                  refueling={editingRefueling} 
+                  onSave={handleSave} 
+                  onClose={() => setIsModalOpen(false)}
+                  vehicles={userVisibleResources.vehicles}
+                  drivers={userVisibleResources.drivers}
+                  contracts={userVisibleResources.contracts}
+                />
             </Modal>
         </div>
     );

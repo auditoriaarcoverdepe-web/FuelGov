@@ -1,5 +1,6 @@
+
 import React, { useState } from 'react';
-import { useMockData } from '../hooks/useMockData';
+import { useSupabaseData } from '../hooks/useSupabaseData';
 import Modal from './ui/Modal';
 import type { PublicEntity } from '../types';
 
@@ -51,7 +52,7 @@ const NewEntityForm: React.FC<{
 
 
 const AdminHome: React.FC<AdminHomeProps> = ({ onSelectEntity }) => {
-  const { entities, addEntity } = useMockData();
+  const { entities, addEntity } = useSupabaseData();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSaveEntity = (entity: Omit<PublicEntity, 'id'>) => {
