@@ -32,7 +32,6 @@ export interface User {
   role: Role;
   entityId?: string;
   departmentId?: string;
-  password?: string;
 }
 
 export interface Vehicle {

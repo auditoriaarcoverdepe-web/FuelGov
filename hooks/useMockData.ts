@@ -1,17 +1,7 @@
+
 import { useState, useCallback, Dispatch, SetStateAction } from 'react';
 import { Role, FuelType } from '../types';
 import type { PublicEntity, Department, User, Vehicle, Driver, Contract, Refueling, ContractAdditive } from '../types';
-
-// Function to generate a random password
-const generatePassword = () => {
-    const length = 8;
-    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let retVal = "";
-    for (let i = 0, n = charset.length; i < length; ++i) {
-        retVal += charset.charAt(Math.floor(Math.random() * n));
-    }
-    return retVal;
-};
 
 const daysFromNow = (days: number) => {
     const date = new Date();
@@ -34,11 +24,11 @@ const mockDepartments: Department[] = [
 ];
 
 export const mockUsers: User[] = [
-    { id: 'u1', name: 'Admin Geral', email: 'erinaldotelso.aud@gmail.com', role: Role.ADMIN, password: 'Admin123' },
-    { id: 'u2', name: 'João Controlador', email: 'controlador.pm@cidadourada.gov', role: Role.CONTROLLER, entityId: '1', password: 'ControllerPassword123' },
-    { id: 'u3', name: 'Maria Gestora', email: 'gestora.saude@cidadourada.gov', role: Role.USER, entityId: '1', departmentId: 'd2', password: 'UserPassword123' },
-    { id: 'u4', name: 'Carlos Assessor', email: 'assessor.cm@rioclaro.gov', role: Role.USER, entityId: '2', departmentId: 'd4', password: 'UserPassword456' },
-    { id: 'u5', name: 'Ana Controladora', email: 'controladora.cm@rioclaro.gov', role: Role.CONTROLLER, entityId: '2', password: 'ControllerPassword456' },
+    { id: 'u1', name: 'Admin Geral', email: 'erinaldotelso.aud@gmail.com', role: Role.ADMIN },
+    { id: 'u2', name: 'João Controlador', email: 'controlador.pm@cidadourada.gov', role: Role.CONTROLLER, entityId: '1' },
+    { id: 'u3', name: 'Maria Gestora', email: 'gestora.saude@cidadourada.gov', role: Role.USER, entityId: '1', departmentId: 'd2' },
+    { id: 'u4', name: 'Carlos Assessor', email: 'assessor.cm@rioclaro.gov', role: Role.USER, entityId: '2', departmentId: 'd4' },
+    { id: 'u5', name: 'Ana Controladora', email: 'controladora.cm@rioclaro.gov', role: Role.CONTROLLER, entityId: '2' },
 ];
 
 const mockVehicles: Vehicle[] = [
@@ -125,13 +115,7 @@ export const useMockData = () => {
     }, []);
 
     const genericAdd = useCallback(<T extends { id: string }>(setter: Dispatch<SetStateAction<T[]>>, item: Omit<T, 'id'>, key: keyof typeof dataStore) => {
-        let newItem: T;
-        if (key === 'users') {
-             const userItem = item as unknown as Omit<User, 'id'>;
-             newItem = { ...userItem, id: new Date().getTime().toString(), password: generatePassword() } as unknown as T;
-        } else {
-            newItem = { ...item, id: new Date().getTime().toString() } as T;
-        }
+        const newItem = { ...item, id: new Date().getTime().toString() } as T;
         const currentData = dataStore[key] as unknown as T[];
         saveData(setter, [...currentData, newItem], key);
         return newItem;
