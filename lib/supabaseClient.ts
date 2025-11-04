@@ -1,17 +1,30 @@
 import { createClient } from '@supabase/supabase-js';
 
-// ATENÇÃO: Em uma aplicação real, estas chaves devem vir de um local seguro
-// de variáveis de ambiente (como `process.env` em um servidor ou um arquivo .env
-// com uma ferramenta de build).
-// Codificá-las diretamente aqui é APENAS para fins de demonstração neste ambiente
-// específico, que não suporta `process.env`.
-// CERTIFIQUE-SE DE INVALIDAR ESTAS CHAVES SE ELAS FOREM EXPOSTAS PUBLICAMENTE.
-const supabaseUrl = 'https://givgdvimnppvawkgbznn.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpdmdkdmltbnBwdmF3a2diem5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjg1ODksImV4cCI6MjA3NzgwNDU4OX0.8vLoORdHirKGoxILPIvRkOqLF4YorQNOvpMXtTgUOfw';
+// ATENÇÃO: As chaves do Supabase agora são carregadas a partir de variáveis de ambiente.
+// Para o deploy na Vercel, você DEVE configurar as seguintes variáveis de ambiente
+// no painel do seu projeto:
+// 1. VITE_SUPABASE_URL: A URL do seu projeto Supabase.
+// 2. VITE_SUPABASE_ANON_KEY: A chave anônima (public) do seu projeto.
+//
+// O prefixo VITE_ é uma convenção para expor variáveis ao front-end de forma segura
+// durante o processo de build com ferramentas como o Vite.
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-    // A verificação é mantida caso os valores codificados sejam removidos posteriormente.
-    throw new Error("A URL e a Chave Anon do Supabase devem ser fornecidas.");
+// Exporta uma flag para verificar se o Supabase está configurado.
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+
+if (!isSupabaseConfigured) {
+    console.warn(
+        "AVISO: Variáveis de ambiente do Supabase não definidas. " +
+        "A aplicação funcionará com dados de exemplo (mock data). Para conectar ao backend, " +
+        "configure as variáveis VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY."
+    );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Cria um cliente com valores dummy se as variáveis não estiverem presentes para evitar que a aplicação quebre.
+// A lógica da aplicação usará `isSupabaseConfigured` para decidir se usa este cliente ou os dados mock.
+export const supabase = createClient(
+    supabaseUrl || 'http://localhost:1',
+    supabaseAnonKey || 'dummy-anon-key'
+);

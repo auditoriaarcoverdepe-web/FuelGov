@@ -1,8 +1,7 @@
-
-
 // FIX: Import Dispatch and SetStateAction to be used for typing state setters.
 import { useState, useEffect, useCallback, Dispatch, SetStateAction } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, isSupabaseConfigured } from '../lib/supabaseClient';
+import { useMockData } from './useMockData';
 import type { PublicEntity, Department, User, Vehicle, Driver, Contract, Refueling } from '../types';
 
 type TableName = 'entities' | 'departments' | 'users' | 'vehicles' | 'drivers' | 'contracts' | 'refuelings';
@@ -20,6 +19,14 @@ const tableSetterMap = {
 
 
 export const useSupabaseData = () => {
+    // Se o Supabase não estiver configurado, retorna os dados de mock.
+    // Isso permite que o app rode offline ou em um ambiente de dev sem backend.
+    const mockData = useMockData();
+    if (!isSupabaseConfigured) {
+        return { ...mockData, loading: false };
+    }
+    
+    // Lógica original do hook para buscar dados do Supabase
     const [entities, setEntities] = useState<PublicEntity[]>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [users, setUsers] = useState<User[]>([]);
@@ -95,7 +102,7 @@ export const useSupabaseData = () => {
             return data[0];
         }
         return null;
-    }, []);
+    }, [setters]);
 
     const genericUpdate = useCallback(async <T extends { id: string }>(updatedItem: T, tableName: TableName) => {
         const { data, error } = await supabase.from(tableName).update(updatedItem).eq('id', updatedItem.id).select();
@@ -111,7 +118,7 @@ export const useSupabaseData = () => {
              return data[0];
         }
         return null;
-    }, []);
+    }, [setters]);
 
     const genericDelete = useCallback(async (id: string, tableName: TableName) => {
         const { error } = await supabase.from(tableName).delete().eq('id', id);
@@ -123,7 +130,7 @@ export const useSupabaseData = () => {
         // FIX: Use Dispatch and SetStateAction directly without React namespace.
         const setter = setters[setterName] as Dispatch<SetStateAction<{id: string}[]>>;
         setter(prev => prev.filter(item => item.id !== id));
-    }, []);
+    }, [setters]);
 
 
     return {

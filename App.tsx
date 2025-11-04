@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import Header from './components/Header';
@@ -15,7 +14,8 @@ import Login from './components/Login';
 import AdminHome from './components/AdminHome';
 import { Role } from './types';
 import type { User } from './types';
-import { supabase } from './lib/supabaseClient'; 
+import { supabase, isSupabaseConfigured } from './lib/supabaseClient'; 
+import { useMockData } from './hooks/useMockData';
 
 export type View = 'dashboard' | 'entities' | 'vehicles' | 'drivers' | 'contracts' | 'refuelings' | 'users';
 
@@ -24,10 +24,44 @@ const App: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
     const [loadingSession, setLoadingSession] = useState(true);
+    const { users: mockUsers } = useMockData();
 
     useEffect(() => {
+        // Se o Supabase não estiver configurado, não tentamos buscar a sessão.
+        if (!isSupabaseConfigured) {
+            setLoadingSession(false);
+            return;
+        }
+
         const getSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session?.user) {
+                    const { data: userProfile, error } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single();
+
+                    if (error) {
+                        console.error("Error fetching user profile:", error);
+                    } else if (userProfile) {
+                        setCurrentUser(userProfile as User);
+                        if ((userProfile as User).role !== Role.ADMIN) {
+                            setSelectedEntityId((userProfile as User).entityId || null);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error during session check:", error);
+            } finally {
+                setLoadingSession(false);
+            }
+        };
+        getSession();
+        
+        const { data: authListener } = supabase.auth.onAuthStateChange(
+          async (_event, session) => {
             if (session?.user) {
                 const { data: userProfile, error } = await supabase
                     .from('users')
@@ -36,27 +70,13 @@ const App: React.FC = () => {
                     .single();
 
                 if (error) {
-                    console.error("Error fetching user profile:", error);
-                } else if (userProfile) {
-                    setCurrentUser(userProfile as User);
-                    if ((userProfile as User).role !== Role.ADMIN) {
-                        setSelectedEntityId((userProfile as User).entityId || null);
-                    }
+                    console.error("Auth listener error fetching profile:", error);
+                    // If profile doesn't exist, might be a partial signup. Log out.
+                    await supabase.auth.signOut();
+                    setCurrentUser(null);
+                } else {
+                    setCurrentUser(userProfile as User | null);
                 }
-            }
-            setLoadingSession(false);
-        };
-        getSession();
-        
-        const { data: authListener } = supabase.auth.onAuthStateChange(
-          async (_event, session) => {
-            if (session?.user) {
-                const { data: userProfile } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('id', session.user.id)
-                    .single();
-                setCurrentUser(userProfile as User | null);
             } else {
                 setCurrentUser(null);
             }
@@ -70,6 +90,23 @@ const App: React.FC = () => {
     }, []);
 
     const login = async (email: string, password: string): Promise<boolean> => {
+      if (!isSupabaseConfigured) {
+          // Lógica de login mock
+          const user = mockUsers.find(u => u.email.toLowerCase() === email.trim().toLowerCase());
+          if (user) {
+              setCurrentUser(user);
+              if (user.role !== Role.ADMIN) {
+                  setSelectedEntityId(user.entityId || null);
+              } else {
+                  setSelectedEntityId(null);
+              }
+              setView('dashboard');
+              return true;
+          }
+          return false;
+      }
+
+      // Lógica de login com Supabase
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email,
         password: password,
@@ -109,6 +146,14 @@ const App: React.FC = () => {
     };
 
     const logout = async () => {
+        if (!isSupabaseConfigured) {
+            // Lógica de logout mock
+            setCurrentUser(null);
+            setSelectedEntityId(null);
+            setView('dashboard');
+            return;
+        }
+
         const { error } = await supabase.auth.signOut();
         if (error) {
             console.error("Error logging out:", error.message);
