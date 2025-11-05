@@ -10,7 +10,10 @@ interface SidebarProps {
 
 const NavItem: React.FC<{
   label: string;
-  icon: React.ReactElement;
+  // FIX: Correctly type the icon prop to allow passing a className.
+  // The original type `React.ReactElement` was too generic and didn't guarantee
+  // that the passed element could accept a `className` prop.
+  icon: React.ReactElement<{ className?: string }>;
   isActive: boolean;
   onClick: () => void;
 }> = ({ label, icon, isActive, onClick }) => (
@@ -40,7 +43,7 @@ const icons = {
 
 const Sidebar: React.FC<SidebarProps> = ({ setView, currentView }) => {
   const { currentUser } = useAuth();
-  const { role } = currentUser;
+  const { role } = currentUser!;
 
   const navLinks: { view: View; label: string; icon: React.ReactElement; roles: Role[] }[] = [
     { view: 'dashboard', label: 'Dashboard', icon: icons.dashboard, roles: [Role.ADMIN, Role.CONTROLLER, Role.USER] },

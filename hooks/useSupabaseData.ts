@@ -97,7 +97,9 @@ export const useSupabaseData = () => {
         if (data) {
             const setterName = tableSetterMap[tableName];
             // FIX: Use Dispatch and SetStateAction directly without React namespace.
-            const setter = setters[setterName] as Dispatch<SetStateAction<T[]>>;
+            // FIX: Cast to `unknown` first to resolve the type mismatch between the union
+            // of setters and the generic `Dispatch<SetStateAction<T[]>>`.
+            const setter = setters[setterName] as unknown as Dispatch<SetStateAction<T[]>>;
             setter(prev => [...prev, ...data]);
             return data[0];
         }
@@ -113,7 +115,9 @@ export const useSupabaseData = () => {
         if (data) {
              const setterName = tableSetterMap[tableName];
              // FIX: Use Dispatch and SetStateAction directly without React namespace.
-             const setter = setters[setterName] as Dispatch<SetStateAction<T[]>>;
+             // FIX: Cast to `unknown` first to resolve the type mismatch between the union
+             // of setters and the generic `Dispatch<SetStateAction<T[]>>`.
+             const setter = setters[setterName] as unknown as Dispatch<SetStateAction<T[]>>;
              setter(prev => prev.map(item => item.id === updatedItem.id ? data[0] : item));
              return data[0];
         }

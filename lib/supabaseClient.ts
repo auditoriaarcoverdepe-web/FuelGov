@@ -11,8 +11,8 @@ import { createClient } from '@supabase/supabase-js';
 // Configure as mesmas variáveis de ambiente (VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY)
 // no painel de configurações do seu provedor de hospedagem.
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = 'https://givgdvimnppvawkgbznn.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdpdmdkdmltbnBwdmF3a2diem5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyMjg1ODksImV4cCI6MjA3NzgwNDU4OX0.8vLoORdHirKGoxILPIvRkOqLF4YorQNOvpMXtTgUOfw';
 
 // Exporta uma flag para verificar se o Supabase está configurado.
 // A verificação `includes('seu-projeto')` previne o uso das chaves de exemplo.
