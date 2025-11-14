@@ -1,4 +1,5 @@
 
+
 import React, { useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -47,15 +48,15 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
     const filteredData = useMemo(() => {
         if (!entityId || !currentUser) return { contracts: [], refuelings: [] };
 
-        const entityDepartments = departments.filter(d => d.entityId === entityId).map(d => d.id);
-        const entityContracts = contracts.filter(c => entityDepartments.includes(c.departmentId));
+        const entityDepartments = departments.filter(d => d.entity_id === entityId).map(d => d.id);
+        const entityContracts = contracts.filter(c => entityDepartments.includes(c.department_id));
         const entityContractIds = entityContracts.map(c => c.id);
-        const entityRefuelings = refuelings.filter(r => entityContractIds.includes(r.contractId));
+        const entityRefuelings = refuelings.filter(r => entityContractIds.includes(r.contract_id));
         
-        if (currentUser.role === Role.USER && currentUser.departmentId) {
-            const userContracts = entityContracts.filter(c => c.departmentId === currentUser.departmentId);
+        if (currentUser.role === Role.USER && currentUser.department_id) {
+            const userContracts = entityContracts.filter(c => c.department_id === currentUser.department_id);
             const userContractIds = userContracts.map(c => c.id);
-            const userRefuelings = entityRefuelings.filter(r => userContractIds.includes(r.contractId));
+            const userRefuelings = entityRefuelings.filter(r => userContractIds.includes(r.contract_id));
             return { contracts: userContracts, refuelings: userRefuelings };
         }
         
@@ -65,13 +66,13 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
 
      const filteredDrivers = useMemo(() => {
         if (!entityId || !currentUser) return [];
-        const entityDepartments = departments.filter(d => d.entityId === entityId).map(d => d.id);
+        const entityDepartments = departments.filter(d => d.entity_id === entityId).map(d => d.id);
         
-        if (currentUser.role === Role.USER && currentUser.departmentId) {
-            return drivers.filter(d => d.departmentId === currentUser.departmentId);
+        if (currentUser.role === Role.USER && currentUser.department_id) {
+            return drivers.filter(d => d.department_id === currentUser.department_id);
         }
         
-        const userVisibleDrivers = drivers.filter(d => entityDepartments.includes(d.departmentId));
+        const userVisibleDrivers = drivers.filter(d => entityDepartments.includes(d.department_id));
 
         if (currentUser.role === Role.CONTROLLER) {
             return userVisibleDrivers;
@@ -85,11 +86,11 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
     }, [entityId, currentUser, drivers, departments]);
 
     const totalSpent = useMemo(() => {
-        return filteredData.refuelings.reduce((sum, r) => sum + r.totalValue, 0);
+        return filteredData.refuelings.reduce((sum, r) => sum + r.total_value, 0);
     }, [filteredData.refuelings]);
 
     const totalLiters = useMemo(() => {
-        return filteredData.refuelings.reduce((sum, r) => sum + r.quantityLiters, 0);
+        return filteredData.refuelings.reduce((sum, r) => sum + r.quantity_liters, 0);
     }, [filteredData.refuelings]);
 
     const consumptionByMonth = useMemo(() => {
@@ -97,7 +98,7 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
         filteredData.refuelings.forEach(r => {
             const month = new Date(r.date).toLocaleString('default', { month: 'short', year: '2-digit' });
             if (!data[month]) data[month] = 0;
-            data[month] += r.quantityLiters;
+            data[month] += r.quantity_liters;
         });
         return Object.entries(data).map(([name, value]) => ({ name, Litros: value })).slice(-6); // Last 6 months
     }, [filteredData.refuelings]);
@@ -109,27 +110,47 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
 
         // Contract Alerts
         filteredData.contracts.forEach(contract => {
-            const endDate = new Date(contract.endDate);
+            const endDate = new Date(contract.end_date);
             const daysRemaining = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
             
             if (daysRemaining <= 30 && daysRemaining >= 0) {
                 alerts.push({ id: `c-days-${contract.id}`, title: contract.supplier, message: `Contrato expira em ${daysRemaining} dia(s).`, type: 'warning' });
             }
-
-            const contractTotalLiters = (contract.items || []).reduce((sum, item) => sum + item.quantityLiters, 0);
-            const usedLiters = filteredData.refuelings
-                .filter(r => r.contractId === contract.id)
-                .reduce((sum, r) => sum + r.quantityLiters, 0);
             
-            const usagePercent = (usedLiters / contractTotalLiters) * 100;
-            if (usagePercent >= 85) {
-                alerts.push({ id: `c-usage-${contract.id}`, title: contract.supplier, message: `Uso do contrato em ${usagePercent.toFixed(1)}%.`, type: 'danger' });
+            // Correctly calculate total liters including additives
+            const contractItems = Array.isArray(contract.items) ? contract.items : [];
+            const initialLiters = contractItems.reduce((sum, item) => sum + item.quantity_liters, 0);
+
+            const contractAdditives = Array.isArray(contract.additives) ? contract.additives : [];
+            const additiveLiters = contractAdditives.reduce((total, additive) => {
+                const additiveItems = Array.isArray(additive.items) ? additive.items : [];
+                return total + additiveItems.reduce((sum, item) => sum + item.quantity_liters, 0);
+            }, 0);
+
+            const totalContractLiters = initialLiters + additiveLiters;
+            
+            const usedLiters = filteredData.refuelings
+                .filter(r => r.contract_id === contract.id)
+                .reduce((sum, r) => sum + r.quantity_liters, 0);
+            
+            if (totalContractLiters > 0) {
+                const usagePercent = (usedLiters / totalContractLiters) * 100;
+                if (usagePercent >= 85) {
+                    const alertType = usagePercent >= 95 ? 'danger' : 'warning';
+                    const message = `Uso do contrato em ${usagePercent.toFixed(1)}%. ${alertType === 'danger' ? 'Consumo crítico.' : 'Consumo próximo do limite.'}`;
+                    alerts.push({ 
+                        id: `c-usage-${contract.id}`, 
+                        title: contract.supplier, 
+                        message: message,
+                        type: alertType
+                    });
+                }
             }
         });
         
         // Driver CNH Alerts
         filteredDrivers.forEach(driver => {
-            const validityDate = new Date(driver.cnhValidity);
+            const validityDate = new Date(driver.cnh_validity);
             const daysRemaining = Math.ceil((validityDate.getTime() - today.getTime()) / (1000 * 3600 * 24));
 
             if (daysRemaining < 0) {
@@ -149,7 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ entityId }) => {
 
 
     const entityName = entities.find(e => e.id === entityId)?.name || 'Nenhuma entidade selecionada';
-    const departmentName = departments.find(d => d.id === currentUser?.departmentId)?.name;
+    const departmentName = departments.find(d => d.id === currentUser?.department_id)?.name;
     
     if (loading) {
         return <Card><p>Carregando dados do dashboard...</p></Card>;

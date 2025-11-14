@@ -18,9 +18,9 @@ const ConsumptionAnalytics: React.FC<ConsumptionAnalyticsProps> = ({ refuelings,
         if (refuelings.length === 0) return { vehicleStats: [], fleetAverage: 0 };
 
         const refuelingsByVehicle = refuelings.reduce((acc, r) => {
-            if (r.currentOdometer > r.previousOdometer && r.quantityLiters > 0) {
-                 if (!acc[r.vehicleId]) acc[r.vehicleId] = [];
-                 acc[r.vehicleId].push(r);
+            if (r.current_odometer > r.previous_odometer && r.quantity_liters > 0) {
+                 if (!acc[r.vehicle_id]) acc[r.vehicle_id] = [];
+                 acc[r.vehicle_id].push(r);
             }
             return acc;
         }, {} as Record<string, Refueling[]>);
@@ -29,13 +29,13 @@ const ConsumptionAnalytics: React.FC<ConsumptionAnalyticsProps> = ({ refuelings,
             const vehicleInfo = vehicles.find(v => v.id === vehicleId);
             if (!vehicleInfo) return null;
 
-            const totalKm = vehicleRefuelings.reduce((sum, r) => sum + (r.currentOdometer - r.previousOdometer), 0);
-            const totalLiters = vehicleRefuelings.reduce((sum, r) => sum + r.quantityLiters, 0);
+            const totalKm = vehicleRefuelings.reduce((sum, r) => sum + (r.current_odometer - r.previous_odometer), 0);
+            const totalLiters = vehicleRefuelings.reduce((sum, r) => sum + r.quantity_liters, 0);
             const averageKmL = totalLiters > 0 ? totalKm / totalLiters : 0;
             
             const consumptionHistory = vehicleRefuelings.map(r => ({
                 date: new Date(r.date).getTime(),
-                kmL: r.quantityLiters > 0 ? (r.currentOdometer - r.previousOdometer) / r.quantityLiters : 0,
+                kmL: r.quantity_liters > 0 ? (r.current_odometer - r.previous_odometer) / r.quantity_liters : 0,
             })).sort((a, b) => a.date - b.date);
 
             return { vehicleId, plate: vehicleInfo.plate, model: vehicleInfo.model, totalKm, totalLiters, averageKmL, consumptionHistory };

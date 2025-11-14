@@ -1,3 +1,4 @@
+
 export enum Role {
   ADMIN = 'Administrador Geral',
   CONTROLLER = 'Controlador',
@@ -12,6 +13,8 @@ export enum FuelType {
   FLEX = 'Flex (Gasolina/Etanol)',
 }
 
+export type View = 'dashboard' | 'entities' | 'vehicles' | 'drivers' | 'contracts' | 'refuelings' | 'users';
+
 export interface PublicEntity {
   id: string;
   name: string;
@@ -22,7 +25,7 @@ export interface PublicEntity {
 export interface Department {
   id: string;
   name: string;
-  entityId: string;
+  entity_id: string;
 }
 
 export interface User {
@@ -30,8 +33,8 @@ export interface User {
   name: string;
   email: string;
   role: Role;
-  entityId?: string;
-  departmentId?: string;
+  entity_id?: string;
+  department_id?: string;
 }
 
 export interface Vehicle {
@@ -39,52 +42,52 @@ export interface Vehicle {
   plate: string;
   model: string;
   year: number;
-  fuelType: FuelType;
-  departmentId: string;
+  fuel_type: FuelType;
+  department_id: string;
 }
 
 export interface Driver {
   id: string;
   name: string;
-  licenseNumber: string;
-  cnhValidity: string;
-  departmentId: string;
+  license_number: string;
+  cnh_validity: string;
+  department_id: string;
 }
 
 export interface Contract {
   id:string;
   supplier: string;
-  startDate: string;
-  endDate: string;
+  start_date: string;
+  end_date: string;
   items: ContractItem[];
-  departmentId: string;
+  department_id: string;
   additives?: ContractAdditive[];
 }
 
 export interface ContractItem {
-  fuelType: FuelType;
-  quantityLiters: number;
-  unitPrice: number;
+  fuel_type: FuelType;
+  quantity_liters: number;
+  unit_price: number;
 }
 
 export interface ContractAdditive {
   id: string;
   description: string;
   date: string;
-  newEndDate?: string;
+  new_end_date?: string;
   items: ContractItem[];
 }
 
 export interface Refueling {
   id: string;
-  vehicleId: string;
-  driverId: string;
-  contractId: string;
+  vehicle_id: string;
+  driver_id: string;
+  contract_id: string;
   date: string;
   invoice: string;
-  quantityLiters: number;
-  totalValue: number;
-  previousOdometer: number;
-  currentOdometer: number;
-  fuelType?: FuelType; // Specific fuel used, crucial for FLEX vehicles
+  quantity_liters: number;
+  total_value: number;
+  previous_odometer: number;
+  current_odometer: number;
+  fuel_type?: FuelType; // Specific fuel used, crucial for FLEX vehicles
 }

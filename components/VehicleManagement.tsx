@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -18,9 +16,10 @@ const VehicleForm: React.FC<{
     const { currentUser } = useAuth();
 
     const availableDepartments = useMemo(() => {
+         if (!currentUser) return [];
          if (currentUser.role === Role.ADMIN) return departments;
-         if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entityId === currentUser.entityId);
-         if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.departmentId);
+         if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entity_id === currentUser.entity_id);
+         if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.department_id);
          return [];
     }, [departments, currentUser]);
 
@@ -28,8 +27,8 @@ const VehicleForm: React.FC<{
         plate: vehicle?.plate || '',
         model: vehicle?.model || '',
         year: vehicle?.year || new Date().getFullYear(),
-        fuelType: vehicle?.fuelType || FuelType.GASOLINE,
-        departmentId: vehicle?.departmentId || (availableDepartments.length > 0 ? availableDepartments[0].id : ''),
+        fuel_type: vehicle?.fuel_type || FuelType.GASOLINE,
+        department_id: vehicle?.department_id || '',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -59,20 +58,24 @@ const VehicleForm: React.FC<{
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Tipo de Combustível</label>
-                    <select name="fuelType" value={formData.fuelType} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <select name="fuel_type" value={formData.fuel_type} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                         {Object.values(FuelType).map(ft => <option key={ft} value={ft}>{ft}</option>)}
                     </select>
                 </div>
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700">Órgão Vinculado</label>
-                    <select name="departmentId" value={formData.departmentId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <select name="department_id" value={formData.department_id} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" disabled={availableDepartments.length === 0}>
+                        <option value="" disabled>-- Selecione um órgão --</option>
                         {availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
+                    {availableDepartments.length === 0 && (
+                        <p className="mt-2 text-sm text-danger">Nenhum órgão disponível. Verifique o cadastro de órgãos ou as permissões do usuário.</p>
+                    )}
                 </div>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">Salvar</button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed" disabled={!formData.department_id}>Salvar</button>
             </div>
         </form>
     );
@@ -80,24 +83,32 @@ const VehicleForm: React.FC<{
 
 
 const VehicleManagement: React.FC = () => {
-    const { vehicles, departments, addVehicle, updateVehicle, deleteVehicle } = useSupabaseData();
+    const { vehicles, departments, addVehicle, updateVehicle, deleteVehicle, loading } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
+
+    if (loading) {
+        return <Card><p>Carregando dados...</p></Card>;
+    }
+
+    if (!currentUser) {
+        return <Card><p>Carregando dados do usuário...</p></Card>;
+    }
 
     const canEdit = currentUser.role === Role.ADMIN || currentUser.role === Role.USER;
 
     const filteredVehicles = useMemo(() => {
         if (currentUser.role === Role.ADMIN) return vehicles;
 
-        const userEntityDepartments = departments.filter(d => d.entityId === currentUser.entityId).map(d => d.id);
+        const userEntityDepartments = departments.filter(d => d.entity_id === currentUser.entity_id).map(d => d.id);
         
         if (currentUser.role === Role.CONTROLLER) {
-            return vehicles.filter(v => userEntityDepartments.includes(v.departmentId));
+            return vehicles.filter(v => userEntityDepartments.includes(v.department_id));
         }
         
-        if (currentUser.role === Role.USER && currentUser.departmentId) {
-            return vehicles.filter(v => v.departmentId === currentUser.departmentId);
+        if (currentUser.role === Role.USER && currentUser.department_id) {
+            return vehicles.filter(v => v.department_id === currentUser.department_id);
         }
 
         return [];
@@ -127,8 +138,8 @@ const VehicleManagement: React.FC = () => {
         { header: 'Placa', accessor: 'plate' as const },
         { header: 'Modelo', accessor: 'model' as const },
         { header: 'Ano', accessor: 'year' as const },
-        { header: 'Combustível', accessor: 'fuelType' as const },
-        { header: 'Órgão', accessor: (v: Vehicle) => departments.find(d => d.id === v.departmentId)?.name || 'N/A' }
+        { header: 'Combustível', accessor: 'fuel_type' as const },
+        { header: 'Órgão', accessor: (v: Vehicle) => departments.find(d => d.id === v.department_id)?.name || 'N/A' }
     ];
     
     return (
@@ -156,8 +167,8 @@ const VehicleManagement: React.FC = () => {
                             <tr key={v.id}>
                                 <td className="px-6 py-4 whitespace-nowrap">{v.plate}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">{v.model} ({v.year})</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{v.fuelType}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(d => d.id === v.departmentId)?.name || 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{v.fuel_type}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(d => d.id === v.department_id)?.name || 'N/A'}</td>
                                 {canEdit && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-3">

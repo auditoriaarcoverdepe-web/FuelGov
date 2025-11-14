@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Modal from './ui/Modal';
 import type { PublicEntity } from '../types';
+import Card from './ui/Card';
 
 interface AdminHomeProps {
   onSelectEntity: (entityId: string) => void;
@@ -52,13 +52,17 @@ const NewEntityForm: React.FC<{
 
 
 const AdminHome: React.FC<AdminHomeProps> = ({ onSelectEntity }) => {
-  const { entities, addEntity } = useSupabaseData();
+  const { entities, addEntity, loading } = useSupabaseData();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSaveEntity = (entity: Omit<PublicEntity, 'id'>) => {
       addEntity(entity);
       setIsModalOpen(false);
   };
+
+  if (loading) {
+      return <Card><p>Carregando entidades...</p></Card>;
+  }
 
   return (
     <>

@@ -1,7 +1,3 @@
-
-
-
-
 import React, { useState, useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -19,18 +15,18 @@ const AdditiveForm: React.FC<{
     const [formData, setFormData] = useState({
         description: additive?.description || '',
         date: additive?.date || '',
-        newEndDate: additive?.newEndDate || '',
-        items: additive?.items || [{ fuelType: FuelType.GASOLINE, quantityLiters: 0, unitPrice: 0 }],
+        new_end_date: additive?.new_end_date || '',
+        items: Array.isArray(additive?.items) ? additive.items : [{ fuel_type: FuelType.GASOLINE, quantity_liters: 0, unit_price: 0 }],
     });
 
     const handleItemChange = (index: number, field: keyof ContractItem, value: string | number) => {
         const newItems = [...formData.items];
         const currentItem = { ...newItems[index] };
         
-        if (field === 'fuelType') {
-            currentItem.fuelType = value as FuelType;
+        if (field === 'fuel_type') {
+            currentItem.fuel_type = value as FuelType;
         } else {
-            currentItem[field] = Number(value);
+            (currentItem as any)[field] = Number(value);
         }
         
         newItems[index] = currentItem;
@@ -38,7 +34,7 @@ const AdditiveForm: React.FC<{
     };
 
     const addItem = () => {
-        setFormData(prev => ({ ...prev, items: [...prev.items, { fuelType: FuelType.GASOLINE, quantityLiters: 0, unitPrice: 0 }] }));
+        setFormData(prev => ({ ...prev, items: [...prev.items, { fuel_type: FuelType.GASOLINE, quantity_liters: 0, unit_price: 0 }] }));
     };
     
     const removeItem = (index: number) => {
@@ -63,7 +59,7 @@ const AdditiveForm: React.FC<{
                 </div>
                 <div>
                     <label className="block text-sm font-medium">Nova Data de Fim (Opcional)</label>
-                    <input type="date" value={formData.newEndDate} onChange={e => setFormData(p => ({...p, newEndDate: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                    <input type="date" value={formData.new_end_date} onChange={e => setFormData(p => ({...p, new_end_date: e.target.value}))} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                 </div>
             </div>
 
@@ -72,17 +68,17 @@ const AdditiveForm: React.FC<{
                 <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end p-2 border rounded-md">
                     <div className="md:col-span-2">
                         <label className="text-xs font-medium">Combustível</label>
-                        <select value={item.fuelType} onChange={e => handleItemChange(index, 'fuelType', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <select value={item.fuel_type} onChange={e => handleItemChange(index, 'fuel_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                             {Object.values(FuelType).map(ft => <option key={ft} value={ft}>{ft}</option>)}
                         </select>
                     </div>
                     <div>
                         <label className="text-xs font-medium">Qtd (Litros)</label>
-                        <input type="number" step="0.01" value={item.quantityLiters} onChange={e => handleItemChange(index, 'quantityLiters', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
+                        <input type="number" step="0.01" value={item.quantity_liters} onChange={e => handleItemChange(index, 'quantity_liters', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
                     </div>
                      <div>
                         <label className="text-xs font-medium">Preço Unit.</label>
-                        <input type="number" step="0.01" value={item.unitPrice} onChange={e => handleItemChange(index, 'unitPrice', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
+                        <input type="number" step="0.01" value={item.unit_price} onChange={e => handleItemChange(index, 'unit_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
                     </div>
                     {formData.items.length > 1 && (
                          <button type="button" onClick={() => removeItem(index)} className="text-danger hover:text-red-800 text-sm md:col-start-5">Remover</button>
@@ -110,18 +106,18 @@ const ContractForm: React.FC<{
     const availableDepartments = useMemo(() => {
         if (!currentUser) return [];
         if (currentUser.role === Role.ADMIN) return departments;
-        if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entityId === currentUser.entityId);
-        if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.departmentId);
+        if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entity_id === currentUser.entity_id);
+        if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.department_id);
         return [];
     }, [departments, currentUser]);
 
     const [formData, setFormData] = useState({
         supplier: contract?.supplier || '',
-        startDate: contract?.startDate || '',
-        endDate: contract?.endDate || '',
-        departmentId: contract?.departmentId || (availableDepartments.length > 0 ? availableDepartments[0].id : ''),
-        items: contract?.items || [{ fuelType: FuelType.GASOLINE, quantityLiters: 0, unitPrice: 0 }],
-        additives: contract?.additives || [],
+        start_date: contract?.start_date || '',
+        end_date: contract?.end_date || '',
+        department_id: contract?.department_id || (availableDepartments.length > 0 ? availableDepartments[0].id : ''),
+        items: Array.isArray(contract?.items) ? contract.items : [{ fuel_type: FuelType.GASOLINE, quantity_liters: 0, unit_price: 0 }],
+        additives: Array.isArray(contract?.additives) ? contract.additives : [],
     });
 
     const [isAdditiveModalOpen, setIsAdditiveModalOpen] = useState(false);
@@ -136,10 +132,10 @@ const ContractForm: React.FC<{
         const newItems = [...formData.items];
         const currentItem = { ...newItems[index] };
         
-        if (field === 'fuelType') {
-            currentItem.fuelType = value as FuelType;
+        if (field === 'fuel_type') {
+            currentItem.fuel_type = value as FuelType;
         } else {
-            currentItem[field] = Number(value);
+            (currentItem as any)[field] = Number(value);
         }
         
         newItems[index] = currentItem;
@@ -149,7 +145,7 @@ const ContractForm: React.FC<{
     const addItem = () => {
         setFormData(prev => ({
             ...prev,
-            items: [...prev.items, { fuelType: FuelType.GASOLINE, quantityLiters: 0, unitPrice: 0 }]
+            items: [...prev.items, { fuel_type: FuelType.GASOLINE, quantity_liters: 0, unit_price: 0 }]
         }));
     };
 
@@ -201,15 +197,15 @@ const ContractForm: React.FC<{
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Data Início</label>
-                        <input type="date" name="startDate" value={formData.startDate} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                        <input type="date" name="start_date" value={formData.start_date} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium">Data Fim</label>
-                        <input type="date" name="endDate" value={formData.endDate} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
+                        <input type="date" name="end_date" value={formData.end_date} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm" />
                     </div>
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium">Órgão Vinculado</label>
-                        <select name="departmentId" value={formData.departmentId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <select name="department_id" value={formData.department_id} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             {availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
                     </div>
@@ -220,17 +216,17 @@ const ContractForm: React.FC<{
                     <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end p-2 border rounded-md">
                         <div className="md:col-span-2">
                             <label className="text-xs font-medium">Combustível</label>
-                            <select value={item.fuelType} onChange={e => handleItemChange(index, 'fuelType', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                            <select value={item.fuel_type} onChange={e => handleItemChange(index, 'fuel_type', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                                 {Object.values(FuelType).map(ft => <option key={ft} value={ft}>{ft}</option>)}
                             </select>
                         </div>
                         <div>
                             <label className="text-xs font-medium">Qtd (Litros)</label>
-                            <input type="number" step="0.01" value={item.quantityLiters} onChange={e => handleItemChange(index, 'quantityLiters', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
+                            <input type="number" step="0.01" value={item.quantity_liters} onChange={e => handleItemChange(index, 'quantity_liters', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
                         </div>
                         <div>
                             <label className="text-xs font-medium">Preço Unit.</label>
-                            <input type="number" step="0.01" value={item.unitPrice} onChange={e => handleItemChange(index, 'unitPrice', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
+                            <input type="number" step="0.01" value={item.unit_price} onChange={e => handleItemChange(index, 'unit_price', e.target.value)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm" />
                         </div>
                         {formData.items.length > 1 && (
                             <button type="button" onClick={() => removeItem(index)} className="text-danger hover:text-red-800 text-sm md:col-start-5">Remover</button>
@@ -274,19 +270,27 @@ const ContractForm: React.FC<{
 };
 
 const ContractManagement: React.FC = () => {
-    const { contracts, departments, addContract, updateContract, deleteContract } = useSupabaseData();
+    const { contracts, departments, addContract, updateContract, deleteContract, loading } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingContract, setEditingContract] = useState<Contract | null>(null);
+
+    if (loading) {
+        return <Card><p>Carregando dados...</p></Card>;
+    }
+
+    if (!currentUser) {
+        return <Card><p>Carregando dados do usuário...</p></Card>;
+    }
 
     const canEdit = currentUser.role === Role.ADMIN || currentUser.role === Role.USER;
 
     const filteredContracts = useMemo(() => {
         if (!currentUser) return [];
         if (currentUser.role === Role.ADMIN) return contracts;
-        const userEntityDepartments = departments.filter(d => d.entityId === currentUser.entityId).map(d => d.id);
-        if (currentUser.role === Role.CONTROLLER) return contracts.filter(c => userEntityDepartments.includes(c.departmentId));
-        if (currentUser.role === Role.USER && currentUser.departmentId) return contracts.filter(c => c.departmentId === currentUser.departmentId);
+        const userEntityDepartments = departments.filter(d => d.entity_id === currentUser.entity_id).map(d => d.id);
+        if (currentUser.role === Role.CONTROLLER) return contracts.filter(c => userEntityDepartments.includes(c.department_id));
+        if (currentUser.role === Role.USER && currentUser.department_id) return contracts.filter(c => c.department_id === currentUser.department_id);
         return [];
     }, [currentUser, contracts, departments]);
 
@@ -322,9 +326,9 @@ const ContractManagement: React.FC = () => {
 
     const exportColumns = [
         { header: 'Fornecedor', accessor: 'supplier' as const },
-        { header: 'Início', accessor: (c: Contract) => new Date(c.startDate).toLocaleDateString() },
-        { header: 'Fim', accessor: (c: Contract) => new Date(c.endDate).toLocaleDateString() },
-        { header: 'Órgão', accessor: (c: Contract) => departments.find(d => d.id === c.departmentId)?.name || 'N/A' },
+        { header: 'Início', accessor: (c: Contract) => new Date(c.start_date).toLocaleDateString() },
+        { header: 'Fim', accessor: (c: Contract) => new Date(c.end_date).toLocaleDateString() },
+        { header: 'Órgão', accessor: (c: Contract) => departments.find(d => d.id === c.department_id)?.name || 'N/A' },
     ];
 
     return (
@@ -351,9 +355,9 @@ const ContractManagement: React.FC = () => {
                         {filteredContracts.map(c => (
                             <tr key={c.id}>
                                 <td className="px-6 py-4 whitespace-nowrap">{c.supplier}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{new Date(c.startDate).toLocaleDateString()} - {new Date(c.endDate).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{getStatus(c.endDate)}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(d => d.id === c.departmentId)?.name || 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{new Date(c.start_date).toLocaleDateString()} - {new Date(c.end_date).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{getStatus(c.end_date)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(d => d.id === c.department_id)?.name || 'N/A'}</td>
                                 {canEdit && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-3">

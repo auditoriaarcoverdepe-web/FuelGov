@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -58,7 +57,7 @@ const DepartmentForm: React.FC<{
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...department, name, entityId } as Omit<Department, 'id'> | Department);
+        onSave({ ...department, name, entity_id: entityId } as Omit<Department, 'id'> | Department);
     };
 
     return (
@@ -80,13 +79,21 @@ interface EntityManagementProps {
 }
 
 const EntityManagement: React.FC<EntityManagementProps> = ({ entityId }) => {
-    const { entities, departments, addEntity, updateEntity, deleteEntity, addDepartment, updateDepartment, deleteDepartment } = useSupabaseData();
+    const { entities, departments, addEntity, updateEntity, deleteEntity, addDepartment, updateDepartment, deleteDepartment, loading } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isEntityModalOpen, setIsEntityModalOpen] = useState(false);
     const [editingEntity, setEditingEntity] = useState<PublicEntity | null>(null);
     const [isDeptModalOpen, setIsDeptModalOpen] = useState(false);
     const [editingDept, setEditingDept] = useState<Department | null>(null);
     const [currentEntityForDept, setCurrentEntityForDept] = useState<string | null>(null);
+
+    if (loading) {
+        return <Card><p>Carregando dados...</p></Card>;
+    }
+
+    if (!currentUser) {
+        return <Card><p>Carregando dados do usuário...</p></Card>;
+    }
 
     const canEdit = currentUser.role === Role.ADMIN;
     
@@ -96,7 +103,7 @@ const EntityManagement: React.FC<EntityManagementProps> = ({ entityId }) => {
             return entityId ? entities.filter(e => e.id === entityId) : [];
         }
         if (currentUser.role === Role.CONTROLLER) {
-            return entities.filter(e => e.id === currentUser.entityId);
+            return entities.filter(e => e.id === currentUser.entity_id);
         }
         return [];
     }, [currentUser, entities, entityId]);
@@ -117,7 +124,7 @@ const EntityManagement: React.FC<EntityManagementProps> = ({ entityId }) => {
         setIsDeptModalOpen(false);
         setEditingDept(null);
     };
-    const handleEditDept = (dept: Department) => { setEditingDept(dept); setCurrentEntityForDept(dept.entityId); setIsDeptModalOpen(true); };
+    const handleEditDept = (dept: Department) => { setEditingDept(dept); setCurrentEntityForDept(dept.entity_id); setIsDeptModalOpen(true); };
     const handleAddNewDept = (entityId: string) => { setEditingDept(null); setCurrentEntityForDept(entityId); setIsDeptModalOpen(true); };
 
 
@@ -144,7 +151,7 @@ const EntityManagement: React.FC<EntityManagementProps> = ({ entityId }) => {
                     
                     <h3 className="text-md font-semibold text-gray-600 mt-4 mb-2">Órgãos / Secretarias</h3>
                     <div className="border-t pt-2">
-                        {departments.filter(d => d.entityId === entity.id).map(dept => (
+                        {departments.filter(d => d.entity_id === entity.id).map(dept => (
                             <div key={dept.id} className="flex justify-between items-center py-2 border-b last:border-b-0">
                                 <span>{dept.name}</span>
                                 {canEdit && (

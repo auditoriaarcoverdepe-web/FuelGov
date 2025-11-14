@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Role } from '../types';
-import type { View } from '../App';
+import type { View } from '../types';
 
 interface SidebarProps {
   setView: (view: View) => void;
@@ -43,7 +44,11 @@ const icons = {
 
 const Sidebar: React.FC<SidebarProps> = ({ setView, currentView }) => {
   const { currentUser } = useAuth();
-  const { role } = currentUser!;
+  if (!currentUser) {
+    // This shouldn't happen based on App.tsx logic, but it's a good safeguard.
+    return null;
+  }
+  const { role } = currentUser;
 
   const navLinks: { view: View; label: string; icon: React.ReactElement; roles: Role[] }[] = [
     { view: 'dashboard', label: 'Dashboard', icon: icons.dashboard, roles: [Role.ADMIN, Role.CONTROLLER, Role.USER] },

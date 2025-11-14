@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -18,17 +16,18 @@ const DriverForm: React.FC<{
     const { currentUser } = useAuth();
     
     const availableDepartments = useMemo(() => {
+        if (!currentUser) return [];
         if (currentUser.role === Role.ADMIN) return departments;
-        if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entityId === currentUser.entityId);
-        if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.departmentId);
+        if (currentUser.role === Role.CONTROLLER) return departments.filter(d => d.entity_id === currentUser.entity_id);
+        if (currentUser.role === Role.USER) return departments.filter(d => d.id === currentUser.department_id);
         return [];
     }, [departments, currentUser]);
 
     const [formData, setFormData] = useState({
         name: driver?.name || '',
-        licenseNumber: driver?.licenseNumber || '',
-        cnhValidity: driver?.cnhValidity || '',
-        departmentId: driver?.departmentId || (availableDepartments.length > 0 ? availableDepartments[0].id : ''),
+        license_number: driver?.license_number || '',
+        cnh_validity: driver?.cnh_validity || '',
+        department_id: driver?.department_id || '',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -50,40 +49,52 @@ const DriverForm: React.FC<{
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Nº da CNH</label>
-                    <input type="text" name="licenseNumber" value={formData.licenseNumber} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    <input type="text" name="license_number" value={formData.license_number} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Validade da CNH</label>
-                    <input type="date" name="cnhValidity" value={formData.cnhValidity} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
+                    <input type="date" name="cnh_validity" value={formData.cnh_validity} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" />
                 </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-700">Órgão Vinculado</label>
-                    <select name="departmentId" value={formData.departmentId} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    <select name="department_id" value={formData.department_id} onChange={handleChange} required className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" disabled={availableDepartments.length === 0}>
+                        <option value="" disabled>-- Selecione um órgão --</option>
                         {availableDepartments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
+                    {availableDepartments.length === 0 && (
+                        <p className="mt-2 text-sm text-danger">Nenhum órgão disponível. Verifique o cadastro de órgãos ou as permissões do usuário.</p>
+                    )}
                 </div>
             </div>
             <div className="flex justify-end space-x-2 pt-4">
                 <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
-                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark">Salvar</button>
+                <button type="submit" className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed" disabled={!formData.department_id}>Salvar</button>
             </div>
         </form>
     );
 };
 
 const DriverManagement: React.FC = () => {
-    const { drivers, departments, addDriver, updateDriver, deleteDriver } = useSupabaseData();
+    const { drivers, departments, addDriver, updateDriver, deleteDriver, loading } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
+
+    if (loading) {
+        return <Card><p>Carregando dados...</p></Card>;
+    }
+
+    if (!currentUser) {
+        return <Card><p>Carregando dados do usuário...</p></Card>;
+    }
 
     const canEdit = currentUser.role === Role.ADMIN || currentUser.role === Role.USER;
 
     const filteredDrivers = useMemo(() => {
         if (currentUser.role === Role.ADMIN) return drivers;
-        const userEntityDepartments = departments.filter(d => d.entityId === currentUser.entityId).map(d => d.id);
-        if (currentUser.role === Role.CONTROLLER) return drivers.filter(d => userEntityDepartments.includes(d.departmentId));
-        if (currentUser.role === Role.USER && currentUser.departmentId) return drivers.filter(d => d.departmentId === currentUser.departmentId);
+        const userEntityDepartments = departments.filter(d => d.entity_id === currentUser.entity_id).map(d => d.id);
+        if (currentUser.role === Role.CONTROLLER) return drivers.filter(d => userEntityDepartments.includes(d.department_id));
+        if (currentUser.role === Role.USER && currentUser.department_id) return drivers.filter(d => d.department_id === currentUser.department_id);
         return [];
     }, [currentUser, drivers, departments]);
 
@@ -109,9 +120,9 @@ const DriverManagement: React.FC = () => {
 
     const exportColumns = [
         { header: 'Nome', accessor: 'name' as const },
-        { header: 'CNH', accessor: 'licenseNumber' as const },
-        { header: 'Validade CNH', accessor: (d: Driver) => new Date(d.cnhValidity).toLocaleDateString() },
-        { header: 'Órgão', accessor: (d: Driver) => departments.find(dep => dep.id === d.departmentId)?.name || 'N/A' },
+        { header: 'CNH', accessor: 'license_number' as const },
+        { header: 'Validade CNH', accessor: (d: Driver) => new Date(d.cnh_validity).toLocaleDateString() },
+        { header: 'Órgão', accessor: (d: Driver) => departments.find(dep => dep.id === d.department_id)?.name || 'N/A' },
     ];
 
     return (
@@ -138,9 +149,9 @@ const DriverManagement: React.FC = () => {
                         {filteredDrivers.map(d => (
                             <tr key={d.id}>
                                 <td className="px-6 py-4 whitespace-nowrap">{d.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{d.licenseNumber}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{new Date(d.cnhValidity).toLocaleDateString()}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(dep => dep.id === d.departmentId)?.name || 'N/A'}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{d.license_number}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{new Date(d.cnh_validity).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap">{departments.find(dep => dep.id === d.department_id)?.name || 'N/A'}</td>
                                 {canEdit && (
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div className="flex items-center justify-end space-x-3">

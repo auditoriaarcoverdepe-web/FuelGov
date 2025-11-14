@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { useSupabaseData } from '../hooks/useSupabaseData';
 import Card from './ui/Card';
@@ -20,24 +18,24 @@ const UserForm: React.FC<{
         name: user?.name || '',
         email: user?.email || '',
         role: user?.role || Role.USER,
-        departmentId: user?.departmentId || '',
+        department_id: user?.department_id || '',
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         const newFormData = { ...formData, [name]: value };
         if (name === 'role' && value !== Role.USER) {
-            newFormData.departmentId = '';
+            newFormData.department_id = '';
         }
         setFormData(newFormData);
     };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onSave({ ...user, ...formData, entityId } as Omit<User, 'id'> | User);
+        onSave({ ...user, ...formData, entity_id: entityId } as Omit<User, 'id'> | User);
     };
 
-    const departmentsForSelectedEntity = entityId ? departments.filter(d => d.entityId === entityId) : [];
+    const departmentsForSelectedEntity = entityId ? departments.filter(d => d.entity_id === entityId) : [];
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -61,7 +59,7 @@ const UserForm: React.FC<{
                 {formData.role === Role.USER && (
                     <div className="md:col-span-2">
                         <label className="block text-sm font-medium">Órgão/Secretaria</label>
-                        <select name="departmentId" value={formData.departmentId} onChange={handleChange} required={formData.role === Role.USER} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <select name="department_id" value={formData.department_id} onChange={handleChange} required={formData.role === Role.USER} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                              <option value="">Selecione...</option>
                              {departmentsForSelectedEntity.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                         </select>
@@ -81,12 +79,16 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ entityId }) => {
-    const { users, entities, departments, addUser, updateUser, deleteUser } = useSupabaseData();
+    const { users, entities, departments, addUser, updateUser, deleteUser, loading } = useSupabaseData();
     const { currentUser } = useAuth();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     
-    if (currentUser.role !== Role.ADMIN) {
+    if (loading) {
+        return <Card><p>Carregando dados...</p></Card>;
+    }
+
+    if (!currentUser || currentUser.role !== Role.ADMIN) {
         return <Card><p>Acesso negado.</p></Card>;
     }
     
@@ -104,14 +106,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ entityId }) => {
     const handleEdit = (user: User) => { setEditingUser(user); setIsModalOpen(true); };
     const handleAddNew = () => { setEditingUser(null); setIsModalOpen(true); };
 
-    const filteredUsers = users.filter(u => u.entityId === entityId && u.role !== Role.ADMIN);
+    const filteredUsers = users.filter(u => u.entity_id === entityId && u.role !== Role.ADMIN);
 
     const exportColumns = [
         { header: 'Nome', accessor: 'name' as const },
         { header: 'Email', accessor: 'email' as const },
         { header: 'Perfil', accessor: 'role' as const },
-        { header: 'Entidade', accessor: (u: User) => entities.find(e => e.id === u.entityId)?.name || 'N/A' },
-        { header: 'Órgão', accessor: (u: User) => u.departmentId ? (departments.find(d => d.id === u.departmentId)?.name || '') : '' },
+        { header: 'Entidade', accessor: (u: User) => entities.find(e => e.id === u.entity_id)?.name || 'N/A' },
+        { header: 'Órgão', accessor: (u: User) => u.department_id ? (departments.find(d => d.id === u.department_id)?.name || '') : '' },
     ];
 
     return (
@@ -142,8 +144,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ entityId }) => {
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">{u.role}</td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-gray-900">{entities.find(e => e.id === u.entityId)?.name}</div>
-                                    {u.departmentId && <div className="text-sm text-gray-500">{departments.find(d => d.id === u.departmentId)?.name}</div>}
+                                    <div className="text-sm text-gray-900">{entities.find(e => e.id === u.entity_id)?.name}</div>
+                                    {u.department_id && <div className="text-sm text-gray-500">{departments.find(d => d.id === u.department_id)?.name}</div>}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                     <div className="flex items-center justify-end space-x-3">
